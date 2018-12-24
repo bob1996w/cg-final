@@ -62,7 +62,7 @@ def paintToCanvasWithRef(canvas, stroke):
     canvas = cv2.circle(canvas, (x,y), r, color, -1)
     return canvas
 
-def painrToCanvasWithSource(canvas, stroke, source):
+def paintToCanvasWithSource(canvas, stroke, source):
     """
     Paint a circle to canvas by stroke, and by using the color from the source image.
     """
@@ -72,6 +72,7 @@ def painrToCanvasWithSource(canvas, stroke, source):
     color = (int(source[y,x,0]), int(source[y,x,1]), int(source[y,x,2]))
     canvas = cv2.circle(canvas, (x,y), r, color, -1)
     return canvas
+
 
 
 def paintLayer(canvas, refImage, radius, source):
@@ -124,6 +125,6 @@ def paintLayer(canvas, refImage, radius, source):
     # currently paint in circles
     for o in order:
         # canvas = paintToCanvas(canvas, strokes[o])
-        canvas = painrToCanvasWithSource(canvas, strokes[o], source)
+        canvas = paintToCanvasWithSource(canvas, strokes[o], source)
 
     return canvas
