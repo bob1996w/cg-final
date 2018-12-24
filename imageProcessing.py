@@ -19,9 +19,13 @@ def cv2_blackAndWhite(img):
 # CONSTANTS
 GAUSSIAN_BLUR_KERNEL = (0, 0)
 BLUR_FACTOR = 1
-POST_BLUR_FACTOR = 0.1
+# POST_BLUR_FACTOR = 0.2
 GRID_SIZE = 1
 APPROXIMATION_THRESHOLD = 100
+MIN_STROKE_LENGTH = 4
+MAX_STROKE_LENGTH = 16
+
+CURVATURE_FILTER = 1
 
 def painterly(img, radii=[2]):
     """
@@ -38,7 +42,7 @@ def painterly(img, radii=[2]):
         print('paint radius', radius)
         refImage = cv2.GaussianBlur(img, GAUSSIAN_BLUR_KERNEL, BLUR_FACTOR * radius)
         canvas = paintLayer(canvas, refImage, radius, img)
-        canvas = cv2.GaussianBlur(canvas, GAUSSIAN_BLUR_KERNEL, POST_BLUR_FACTOR * radius)
+        # canvas = cv2.GaussianBlur(canvas, GAUSSIAN_BLUR_KERNEL, POST_BLUR_FACTOR * radius)
     return canvas
 
 def argmax2D(X):
@@ -72,6 +76,89 @@ def paintToCanvasWithSource(canvas, stroke, source):
     color = (int(source[y,x,0]), int(source[y,x,1]), int(source[y,x,2]))
     canvas = cv2.circle(canvas, (x,y), r, color, -1)
     return canvas
+
+def paintSplineStrokesToCanvas(canvas, stroke, source):
+    """
+    Paint spline strokes to canvas.
+    """
+    points = stroke['p']
+    color = stroke['c']
+    r = stroke['R']
+    for p in points:
+        canvas = cv2.circle(canvas, (p[0], p[1]), r, color, -1)
+    return canvas
+
+
+def colorAbs(colorA, colorB):
+    diff = np.float32(colorA) - np.float32(colorB)
+    return np.sqrt(diff[0] ** 2 + diff[1] ** 2 + diff[2] ** 2)
+
+def luminance(img):
+    return 0.11 * img[:, :, 0] + 0.59 * img[:, :, 1] + 0.30 * img[:, :, 2]
+
+def pictureGradient(img, x, y):
+    """
+    Calculate picture gradient, return (gx, gy)
+    """
+    gx = img[y, x+1] - img[y, x-1]
+    gy = img[y+1, x] - img[y-1, x]
+    return (gx, gy)
+
+def makeSplineStroke(canvas, stroke):
+    """
+    Paint a spline stroke on canvas.
+    """
+    x0 = stroke['x']
+    y0 = stroke['y']
+    refImage = stroke['referenceImage']
+    r = stroke['R']
+
+    strokeColor = refImage[y0, x0]
+    strokeColorA = (int(strokeColor[0]), int(strokeColor[1]), int(strokeColor[2]))
+    Ks = []
+    Ks.append([x0, y0])
+    (x, y) = (x0, y0)
+    (lastDx, lastDy) = (0, 0)
+    for i in range(1, MAX_STROKE_LENGTH + 1):
+        if y >= refImage.shape[0] or x >= refImage.shape[1] or y < 0 or x < 0:
+            return (Ks, strokeColorA)
+        # print ('stroke length', i)
+        if i > MIN_STROKE_LENGTH and colorAbs(refImage[y, x], canvas[y, x]) < colorAbs(refImage[y, x], strokeColor):
+            return (Ks, strokeColorA)
+        
+        lumImage = luminance(refImage) 
+        gx = cv2.Sobel(lumImage, cv2.CV_16S, 1, 0)[y, x]
+        gy = cv2.Sobel(lumImage, cv2.CV_16S, 0, 1)[y, x]
+        
+        # detect vanishing gradient
+        gMag = np.sqrt(gx ** 2 + gy ** 2)
+        if gMag < 0.0001:
+            return (Ks, strokeColorA)
+        
+        # get unit vector of gradient
+        gx /= gMag
+        gy /= gMag
+        # compute a normal direction
+        (dx, dy) = (-gy, gx)
+
+        # if necessary, reverse the direction
+        if lastDx * dx + lastDy * dy < 0:
+            (dx, dy) = (-dx, -dy)
+        
+        # filter the stroke direction
+        (dx, dy) = CURVATURE_FILTER * (dx, dy) + (1-CURVATURE_FILTER) * (lastDx, lastDy)
+        dd = np.sqrt(dx ** 2 + dy ** 2)
+        dx /= dd
+        dy /= dd
+        x = int(x + r * dx)
+        y = int(y + r * dy)
+        (lastDx, lastDy) = (dx, dy)
+
+        Ks.append([x, y])
+    return (Ks, strokeColorA)
+
+
+
 
 
 
@@ -114,9 +201,14 @@ def paintLayer(canvas, refImage, radius, source):
                 maxPoint = argmax2D(area)
                 # print(maxPoint)
                 # make stroke
-                strokes.append({'R': radius, 
-                    'x': int(j - grid / 2) + maxPoint[1], 
-                    'y': int(i - grid / 2) + maxPoint[0], 
+                # strokes.append({'R': radius, 
+                #     'x': int(j - grid / 2) + maxPoint[1], 
+                #     'y': int(i - grid / 2) + maxPoint[0], 
+                #     'referenceImage': refImage})
+                initStroke = {'R': radius, 'x': int(j - grid/2) + maxPoint[1], 
+                    'y': int(i - grid / 2) + maxPoint[0], 'referenceImage': refImage}
+                splineStrokes, splineStrokeColor = makeSplineStroke(canvas, initStroke)
+                strokes.append({'R': radius, 'p': splineStrokes, 'c': splineStrokeColor,
                     'referenceImage': refImage})
 
     # paint all stroke in S on the canvas, in random order
@@ -125,6 +217,7 @@ def paintLayer(canvas, refImage, radius, source):
     # currently paint in circles
     for o in order:
         # canvas = paintToCanvas(canvas, strokes[o])
-        canvas = paintToCanvasWithSource(canvas, strokes[o], source)
+        # canvas = paintToCanvasWithSource(canvas, strokes[o], source)
+        canvas = paintSplineStrokesToCanvas(canvas, strokes[o], source)
 
     return canvas
