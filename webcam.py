@@ -54,8 +54,8 @@ svMessage = tk.StringVar()
 svMessage.set(s.MESSAGE[1] if gCameraEffect else s.MESSAGE[0])
 lDescription = tk.Label(fLower, textvariable=svMessage, fg='black')
 lDescription.pack(anchor=tk.W, side=tk.LEFT, expand=True)
-bToggleCameraEffect = tk.Button(fLower, text='toggle effect', fg='black', command=toggleCameraEffect)
-bToggleCameraEffect.pack(anchor=tk.E, side=tk.LEFT, expand=False)
+# bToggleCameraEffect = tk.Button(fLower, text='toggle effect', fg='black', command=toggleCameraEffect)
+# bToggleCameraEffect.pack(anchor=tk.E, side=tk.LEFT, expand=False)
 bScreenShot = tk.Button(fLower, text='screenshot&apply', fg='black', command=previewWindow)
 bScreenShot.pack(anchor=tk.E, side=tk.RIGHT, expand=False)
 
@@ -69,11 +69,11 @@ def show_frame():
     global gCurrentFrame
     gCurrentFrame = frame
 
-    global gCameraEffect
-    if gCameraEffect:
-    # if True:
-        # frame = ip.blackAndWhite(frame)
-        frame = ip.painterly(frame, [8, 4, 2])
+    # global gCameraEffect
+    # if gCameraEffect:
+    # # if True:
+    #     # frame = ip.blackAndWhite(frame)
+    #     frame = ip.painterly(frame, [8, 4, 2])
 
     cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
     img = PIL.Image.fromarray(cv2image)

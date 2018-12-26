@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import math
 
 def blackAndWhite(img):
     for i in range(img.shape[0]):
@@ -16,9 +17,12 @@ def cv2_blackAndWhite(img):
 # Aaron Hertzmann, 
 # Painterly Rendering with Curved Brush Strokes of Multiple Sizes
 
+SOBEL_KERNEL_X = np.array([[1,0,-1], [2, 0, -2], [1, 0, -1]])
+SOBEL_KERNEL_Y = SOBEL_KERNEL_X.T
+
 # CONSTANTS
 GAUSSIAN_BLUR_KERNEL = (0, 0)
-BLUR_FACTOR = 1
+BLUR_FACTOR = 0.7
 # POST_BLUR_FACTOR = 0.2
 GRID_SIZE = 1
 APPROXIMATION_THRESHOLD = 100
@@ -104,7 +108,7 @@ def pictureGradient(img, x, y):
     gy = img[y+1, x] - img[y-1, x]
     return (gx, gy)
 
-def makeSplineStroke(canvas, stroke):
+def makeSplineStroke_broken(canvas, stroke):
     """
     Paint a spline stroke on canvas.
     """
@@ -126,12 +130,20 @@ def makeSplineStroke(canvas, stroke):
         if i > MIN_STROKE_LENGTH and colorAbs(refImage[y, x], canvas[y, x]) < colorAbs(refImage[y, x], strokeColor):
             return (Ks, strokeColorA)
         
-        lumImage = luminance(refImage) 
-        gx = cv2.Sobel(lumImage, cv2.CV_16S, 1, 0)[y, x]
-        gy = cv2.Sobel(lumImage, cv2.CV_16S, 0, 1)[y, x]
+        lumImage = luminance(refImage) [y - 1:y + 2, x - 1:x + 2]
+        # gx = cv2.Sobel(lumImage, cv2.CV_16S, 1, 0)[y, x]
+        # gy = cv2.Sobel(lumImage, cv2.CV_16S, 0, 1)[y, x]
+        # gx = cv2.Sobel(lumImage[y-1:y+2, x-1:x+2], cv2.CV_16S, 1, 0, ksize=3)[0,0]
+        # gy = cv2.Sobel(lumImage[y-1:y+2, x-1:x+2], cv2.CV_16S, 0, 1, ksize=3)[0,0]
+        if y-1 < 0 or y+1 >= refImage.shape[0] or x-1 < 0 or x+1 >= refImage.shape[1]:
+            gx = 0
+            gy = 0
+        else:
+            gy = np.multiply(lumImage, SOBEL_KERNEL_Y)[0,0]
+            gx = np.multiply(lumImage, SOBEL_KERNEL_X)[0,0]
         
         # detect vanishing gradient
-        gMag = np.sqrt(gx ** 2 + gy ** 2)
+        gMag = math.sqrt(gx ** 2 + gy ** 2)
         if gMag < 0.0001:
             return (Ks, strokeColorA)
         
@@ -158,6 +170,59 @@ def makeSplineStroke(canvas, stroke):
     return (Ks, strokeColorA)
 
 
+
+def makeSplineStroke(canvas, stroke):
+    """
+    Paint a spline stroke on canvas.
+    """
+    x0 = stroke['x']
+    y0 = stroke['y']
+    refImage = stroke['referenceImage']
+    r = stroke['R']
+
+    strokeColor = refImage[y0, x0]
+    strokeColorA = (int(strokeColor[0]), int(strokeColor[1]), int(strokeColor[2]))
+    Ks = []
+    Ks.append([x0, y0])
+    (x, y) = (x0, y0)
+    (lastDx, lastDy) = (0, 0)
+    for i in range(1, MAX_STROKE_LENGTH + 1):
+        if y >= refImage.shape[0] or x >= refImage.shape[1] or y < 0 or x < 0:
+            return (Ks, strokeColorA)
+        # print ('stroke length', i)
+        if i > MIN_STROKE_LENGTH and colorAbs(refImage[y, x], canvas[y, x]) < colorAbs(refImage[y, x], strokeColor):
+            return (Ks, strokeColorA)
+        
+        lumImage = luminance(refImage)
+        gx = cv2.Sobel(lumImage, cv2.CV_16S, 1, 0)[y, x]
+        gy = cv2.Sobel(lumImage, cv2.CV_16S, 0, 1)[y, x]
+        
+        # detect vanishing gradient
+        gMag = math.sqrt(gx ** 2 + gy ** 2)
+        if gMag < 0.0001:
+            return (Ks, strokeColorA)
+        
+        # get unit vector of gradient
+        gx /= gMag
+        gy /= gMag
+        # compute a normal direction
+        (dx, dy) = (-gy, gx)
+
+        # if necessary, reverse the direction
+        if lastDx * dx + lastDy * dy < 0:
+            (dx, dy) = (-dx, -dy)
+        
+        # filter the stroke direction
+        (dx, dy) = CURVATURE_FILTER * (dx, dy) + (1-CURVATURE_FILTER) * (lastDx, lastDy)
+        dd = np.sqrt(dx ** 2 + dy ** 2)
+        dx /= dd
+        dy /= dd
+        x = int(x + r * dx)
+        y = int(y + r * dy)
+        (lastDx, lastDy) = (dx, dy)
+
+        Ks.append([x, y])
+    return (Ks, strokeColorA)
 
 
 
@@ -207,7 +272,8 @@ def paintLayer(canvas, refImage, radius, source):
                 #     'referenceImage': refImage})
                 initStroke = {'R': radius, 'x': int(j - grid/2) + maxPoint[1], 
                     'y': int(i - grid / 2) + maxPoint[0], 'referenceImage': refImage}
-                splineStrokes, splineStrokeColor = makeSplineStroke(canvas, initStroke)
+                # splineStrokes, splineStrokeColor = makeSplineStroke(canvas, initStroke)
+                splineStrokes, splineStrokeColor = makeSplineStroke_broken(canvas, initStroke)
                 strokes.append({'R': radius, 'p': splineStrokes, 'c': splineStrokeColor,
                     'referenceImage': refImage})
 
