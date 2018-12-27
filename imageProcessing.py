@@ -199,7 +199,7 @@ def makeSplineStroke(canvas, stroke):
         
         # detect vanishing gradient
         gMag = math.sqrt(gx ** 2 + gy ** 2)
-        if gMag < 0.0001:
+        if gMag < 1e-6:
             return (Ks, strokeColorA)
         
         # get unit vector of gradient
@@ -213,7 +213,8 @@ def makeSplineStroke(canvas, stroke):
             (dx, dy) = (-dx, -dy)
         
         # filter the stroke direction
-        (dx, dy) = CURVATURE_FILTER * (dx, dy) + (1-CURVATURE_FILTER) * (lastDx, lastDy)
+        dx = CURVATURE_FILTER * dx + (1 - CURVATURE_FILTER) * lastDx
+        dy = CURVATURE_FILTER * dy + (1 - CURVATURE_FILTER) * lastDy
         dd = np.sqrt(dx ** 2 + dy ** 2)
         dx /= dd
         dy /= dd
@@ -273,7 +274,7 @@ def paintLayer(canvas, refImage, radius, source):
                 initStroke = {'R': radius, 'x': int(j - grid/2) + maxPoint[1], 
                     'y': int(i - grid / 2) + maxPoint[0], 'referenceImage': refImage}
                 # splineStrokes, splineStrokeColor = makeSplineStroke(canvas, initStroke)
-                splineStrokes, splineStrokeColor = makeSplineStroke_broken(canvas, initStroke)
+                splineStrokes, splineStrokeColor = makeSplineStroke(canvas, initStroke)
                 strokes.append({'R': radius, 'p': splineStrokes, 'c': splineStrokeColor,
                     'referenceImage': refImage})
 
