@@ -89,7 +89,7 @@ def paintSplineStrokesToCanvas(canvas, stroke, source):
     color = stroke['c']
     r = stroke['R']
     for p in points:
-        canvas = cv2.circle(canvas, (p[0], p[1]), r, color, -1)
+        canvas = cv2.circle(canvas, (p[0], p[1]), r, color, -1, cv2.LINE_AA)
     return canvas
 
 
