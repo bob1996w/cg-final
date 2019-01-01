@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import math
+import random as rnd
 
 def blackAndWhite(img):
     for i in range(img.shape[0]):
@@ -115,6 +116,14 @@ def pictureGradient(img, x, y):
     gy = img[y+1, x] - img[y-1, x]
     return (gx, gy)
 
+def clip(x, a, b):
+    if x < a:
+        return a
+    elif x > b:
+        return b
+    else:
+        return x
+
 def jitterColor(colorList):
     """
     Add jitter to color.
@@ -124,13 +133,13 @@ def jitterColor(colorList):
     # TODO: implement HSV, RGB jitters
     color_HSV = cv2.cvtColor(np.uint8([[colorList]]), cv2.COLOR_BGR2HSV)[0, 0]
     # decide by gaussian distribution
-    color_HSV[0] = np.uint8(np.clip(np.random.normal(color_HSV[0], 180 * JITTER_HUE), 0, 180))
-    color_HSV[1] = np.uint8(np.clip(np.random.normal(color_HSV[1], 256 * JITTER_SAT), 0, 255))
-    color_HSV[2] = np.uint8(np.clip(np.random.normal(color_HSV[2], 256 * JITTER_VAL), 0, 255))
+    color_HSV[0] = np.uint8(clip(rnd.uniform(color_HSV[0] - 180 * JITTER_HUE, color_HSV[0] + 180 * JITTER_HUE), 0, 180))
+    color_HSV[1] = np.uint8(clip(rnd.uniform(color_HSV[1] - 256 * JITTER_SAT, color_HSV[1] + 256 * JITTER_SAT), 0, 255))
+    color_HSV[2] = np.uint8(clip(rnd.uniform(color_HSV[2] - 256 * JITTER_VAL, color_HSV[2] + 256 * JITTER_VAL), 0, 255))
     color = cv2.cvtColor(np.uint8([[color_HSV]]), cv2.COLOR_HSV2BGR)[0, 0]
-    color[0] = np.uint8(np.clip(np.random.normal(color[0], 256 * JITTER_B), 0, 255))
-    color[1] = np.uint8(np.clip(np.random.normal(color[1], 256 * JITTER_G), 0, 255))
-    color[2] = np.uint8(np.clip(np.random.normal(color[2], 256 * JITTER_R), 0, 255))
+    color[0] = np.uint8(clip(rnd.uniform(color[0] - 256 * JITTER_B, color[0] + 256 * JITTER_B), 0, 255))
+    color[1] = np.uint8(clip(rnd.uniform(color[1] - 256 * JITTER_G, color[1] + 256 * JITTER_G), 0, 255))
+    color[2] = np.uint8(clip(rnd.uniform(color[2] - 256 * JITTER_R, color[2] + 256 * JITTER_R), 0, 255))
     return color
 
 def makeSplineStroke_broken(canvas, stroke):
