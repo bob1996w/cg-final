@@ -124,14 +124,14 @@ def clip(x, a, b):
     else:
         return x
 
-def jitterColor(colorList):
+def jitterColor(color):
     """
     Add jitter to color.
     :param np.ndarray color: Color to jitter. np.uint8. BGR format.
     :return np.ndarray: jittered color. BGR format.
     """
     # TODO: implement HSV, RGB jitters
-    color_HSV = cv2.cvtColor(np.uint8([[colorList]]), cv2.COLOR_BGR2HSV)[0, 0]
+    color_HSV = cv2.cvtColor(np.uint8([[color]]), cv2.COLOR_BGR2HSV)[0, 0]
     # decide by gaussian distribution
     color_HSV[0] = np.uint8(clip(rnd.uniform(color_HSV[0] - 180 * JITTER_HUE, color_HSV[0] + 180 * JITTER_HUE), 0, 180))
     color_HSV[1] = np.uint8(clip(rnd.uniform(color_HSV[1] - 256 * JITTER_SAT, color_HSV[1] + 256 * JITTER_SAT), 0, 255))
