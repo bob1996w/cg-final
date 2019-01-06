@@ -35,9 +35,9 @@ CURVATURE_FILTER = 1
 JITTER_HUE = 0.  # range [0, 180]
 JITTER_SAT = 0.  # range [0, 255]
 JITTER_VAL = 0.  # range [0, 255]
-JITTER_R   = 0.
-JITTER_G   = 0.
-JITTER_B   = 0.
+JITTER_R   = 0.3
+JITTER_G   = 0.3
+JITTER_B   = 0.3
 
 def painterly(img, radii=[2]):
     """
@@ -142,6 +142,26 @@ def jitterColor(color):
     color[2] = np.uint8(clip(rnd.uniform(color[2] - 256 * JITTER_R, color[2] + 256 * JITTER_R), 0, 255))
     return color
 
+def jitterColorGaussian(color):
+    """
+    Add jitter to color using gaussian for random.
+    variance = sqrt(MAX_RANGE_OF_PROPERTY * JITTER_OF_PROPERTY)
+
+    :param np.ndarray color: Color to jitter. np.uint8. BGR format.
+    :return np.ndarray: jittered color. BGR format.
+    """
+    # TODO: implement HSV, RGB jitters
+    color_HSV = cv2.cvtColor(np.uint8([[color]]), cv2.COLOR_BGR2HSV)[0, 0]
+    # decide by gaussian distribution
+    color_HSV[0] = np.uint8(clip(rnd.gauss(color_HSV[0], math.sqrt(180 * JITTER_HUE)), 0, 180))
+    color_HSV[1] = np.uint8(clip(rnd.gauss(color_HSV[1], math.sqrt(256 * JITTER_SAT)), 0, 255))
+    color_HSV[2] = np.uint8(clip(rnd.gauss(color_HSV[2], math.sqrt(256 * JITTER_VAL)), 0, 255))
+    color = cv2.cvtColor(np.uint8([[color_HSV]]), cv2.COLOR_HSV2BGR)[0, 0]
+    color[0] = np.uint8(clip(rnd.gauss(color[0], math.sqrt(256 * JITTER_B)), 0, 255))
+    color[1] = np.uint8(clip(rnd.gauss(color[1], math.sqrt(256 * JITTER_G)), 0, 255))
+    color[2] = np.uint8(clip(rnd.gauss(color[2], math.sqrt(256 * JITTER_R)), 0, 255))
+    return color
+
 def makeSplineStroke_broken(canvas, stroke):
     """
     Paint a spline stroke on canvas.
@@ -215,7 +235,7 @@ def makeSplineStroke(canvas, stroke):
     r = stroke['R']
 
     strokeColor = refImage[y0, x0]
-    strokeColor = jitterColor(strokeColor)
+    strokeColor = jitterColorGaussian(strokeColor)
     strokeColorA = (int(strokeColor[0]), int(strokeColor[1]), int(strokeColor[2]))
     Ks = []
     Ks.append([x0, y0])
