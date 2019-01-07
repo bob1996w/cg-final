@@ -30,7 +30,7 @@ def toggleCameraEffect():
     svMessage.set(s.MESSAGE[1] if gCameraEffect else s.MESSAGE[0])
 def previewWindow():
     global gCurrentFrame
-    frame = ip.painterly(gCurrentFrame, [6, 4, 2])
+    frame = ip.painterly(gCurrentFrame, [4, 2])
     window = tk.Toplevel(root)
     lTransformed = tk.Label(window)
     lTransformed.pack()
