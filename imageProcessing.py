@@ -241,6 +241,11 @@ def makeSplineStroke(canvas, stroke):
     Ks.append([x0, y0])
     (x, y) = (x0, y0)
     (lastDx, lastDy) = (0, 0)
+
+    lumImage = luminance(refImage)
+    gix = cv2.Sobel(lumImage, cv2.CV_16S, 1, 0)
+    giy = cv2.Sobel(lumImage, cv2.CV_16S, 0, 1)
+
     for i in range(1, MAX_STROKE_LENGTH + 1):
         if y >= refImage.shape[0] or x >= refImage.shape[1] or y < 0 or x < 0:
             return (Ks, strokeColorA)
@@ -248,9 +253,9 @@ def makeSplineStroke(canvas, stroke):
         if i > MIN_STROKE_LENGTH and colorAbs(refImage[y, x], canvas[y, x]) < colorAbs(refImage[y, x], strokeColor):
             return (Ks, strokeColorA)
         
-        lumImage = luminance(refImage)
-        gx = cv2.Sobel(lumImage, cv2.CV_16S, 1, 0)[y, x]
-        gy = cv2.Sobel(lumImage, cv2.CV_16S, 0, 1)[y, x]
+        # vanish gradient
+        gx = gix[y, x]
+        gy = giy[y, x]
         
         # detect vanishing gradient
         gMag = math.sqrt(gx ** 2 + gy ** 2)
