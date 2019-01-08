@@ -23,21 +23,64 @@ SOBEL_KERNEL_Y = SOBEL_KERNEL_X.T
 
 # CONSTANTS
 GAUSSIAN_BLUR_KERNEL = (0, 0)
-BLUR_FACTOR = 0.7
-# POST_BLUR_FACTOR = 0.2
-GRID_SIZE = 1
-APPROXIMATION_THRESHOLD = 100
+'''
+#impressionist
+APPROXIMATION_THRESHOLD = 100 #T
+CURVATURE_FILTER = 1 #f_c
+BLUR_FACTOR = 0.5      #f-sigma
+GRID_SIZE = 1          # f_g
 MIN_STROKE_LENGTH = 4
 MAX_STROKE_LENGTH = 16
-
-CURVATURE_FILTER = 1
-
 JITTER_HUE = 0.  # range [0, 180]
 JITTER_SAT = 0.  # range [0, 255]
 JITTER_VAL = 0.  # range [0, 255]
-JITTER_R   = 0.3
-JITTER_G   = 0.3
-JITTER_B   = 0.3
+JITTER_R   = 0.
+JITTER_G   = 0.
+JITTER_B   = 0.
+'''
+'''
+#expressionist
+APPROXIMATION_THRESHOLD = 50 #T
+CURVATURE_FILTER = .25 #f_c
+BLUR_FACTOR = 0.5      #f-sigma
+GRID_SIZE = 1          # f_g
+MIN_STROKE_LENGTH = 10
+MAX_STROKE_LENGTH = 16
+JITTER_HUE = 0.  # range [0, 180]
+JITTER_SAT = 0.  # range [0, 255]
+JITTER_VAL = 0.5  # range [0, 255]
+JITTER_R   = 0.
+JITTER_G   = 0.
+JITTER_B   = 0.
+'''
+'''
+#colorist wash
+APPROXIMATION_THRESHOLD = 200 #T
+CURVATURE_FILTER = 1 #f_c
+BLUR_FACTOR = 0.5      #f-sigma
+GRID_SIZE = 1          # f_g
+MIN_STROKE_LENGTH = 10
+MAX_STROKE_LENGTH = 16
+JITTER_HUE = 0.  # range [0, 180]
+JITTER_SAT = 0.  # range [0, 255]
+JITTER_VAL = 0.  # range [0, 255]
+JITTER_R   = 0.3 * 16
+JITTER_G   = 0.3 * 16
+JITTER_B   = 0.3 * 16
+'''
+#pointilist
+APPROXIMATION_THRESHOLD = 100 #T
+CURVATURE_FILTER = 1 #f_c
+BLUR_FACTOR = 0.5      #f-sigma
+GRID_SIZE = 0.5        # f_g
+MIN_STROKE_LENGTH = 0
+MAX_STROKE_LENGTH = 0
+JITTER_HUE = 0.3  # range [0, 180]
+JITTER_SAT = 0.  # range [0, 255]
+JITTER_VAL = 1  # range [0, 255]
+JITTER_R   = 0.
+JITTER_G   = 0.
+JITTER_B   = 0.
 
 def painterly(img, radii=[2]):
     """
@@ -53,7 +96,10 @@ def painterly(img, radii=[2]):
     for radius in radii:
         print('paint radius', radius)
         refImage = cv2.GaussianBlur(img, GAUSSIAN_BLUR_KERNEL, BLUR_FACTOR * radius)
-        canvas = paintLayer(canvas, refImage, radius, img)
+        if radius == max(radii):
+            canvas = paintLayer(canvas, refImage, radius, img, init=True)
+        else:
+            canvas = paintLayer(canvas, refImage, radius, img)
         # canvas = cv2.GaussianBlur(canvas, GAUSSIAN_BLUR_KERNEL, POST_BLUR_FACTOR * radius)
     return canvas
 
@@ -288,7 +334,7 @@ def makeSplineStroke(canvas, stroke):
 
 
 
-def paintLayer(canvas, refImage, radius, source):
+def paintLayer(canvas, refImage, radius, source, init=False):
     """
     Paint the layer with single brush radius.
 
@@ -305,7 +351,7 @@ def paintLayer(canvas, refImage, radius, source):
     # print('diff_3 dtype', diff_3.dtype)
     diff = np.sqrt(diff_3[:,:,0] ** 2 + diff_3[:,:,1] ** 2+ diff_3[:,:,2] ** 2)
     # print(diff.dtype)
-    grid = GRID_SIZE * radius
+    grid = math.ceil(GRID_SIZE * radius)
     for i in range(0, canvas.shape[0] + grid // 2, grid):
         for j in range(0, canvas.shape[1] + grid // 2, grid):
             # sum the error near (j, i)
@@ -313,8 +359,9 @@ def paintLayer(canvas, refImage, radius, source):
             Yend = canvas.shape[0] - 1 if int(i + grid / 2) >= canvas.shape[0] - 1 else int(i + grid / 2)
             Xstart = 0 if int(j - grid / 2) <= 0 else int(j - grid / 2)
             Xend = canvas.shape[1] - 1 if int(j + grid / 2) >= canvas.shape[1] - 1 else int(j + grid / 2)
-            realGridSize = (Yend - Ystart) * (Xend - Xstart) if (Yend - Ystart) * (Xend - Xstart) > 0 else 1
+            realGridSize = (Yend - Ystart) * (Xend - Xstart) if (Yend - Ystart) * (Xend - Xstart) >= 0 else 1
             if realGridSize <= 0:
+                continue
                 print('realGridSize error at', radius, i, j)
 
             # area = diff[int(i - grid/2):int(i + grid/2), int(j-grid/2):int(j+grid/2)]
@@ -322,7 +369,7 @@ def paintLayer(canvas, refImage, radius, source):
             area = diff[Ystart:Yend, Xstart:Xend]
             areaError = np.sum(area) / realGridSize
             # print('areaError', areaError)
-            if areaError > APPROXIMATION_THRESHOLD:
+            if init or areaError > APPROXIMATION_THRESHOLD:
                 # find the largest error point
                 maxPoint = argmax2D(area)
                 # print(maxPoint)
