@@ -23,7 +23,7 @@ SOBEL_KERNEL_Y = SOBEL_KERNEL_X.T
 
 # CONSTANTS
 GAUSSIAN_BLUR_KERNEL = (0, 0)
-'''
+
 #impressionist
 APPROXIMATION_THRESHOLD = 100 #T
 CURVATURE_FILTER = 1 #f_c
@@ -37,7 +37,8 @@ JITTER_VAL = 0.  # range [0, 255]
 JITTER_R   = 0.
 JITTER_G   = 0.
 JITTER_B   = 0.
-'''
+ALPHA = 1.
+
 '''
 #expressionist
 APPROXIMATION_THRESHOLD = 50 #T
@@ -52,6 +53,7 @@ JITTER_VAL = 0.5  # range [0, 255]
 JITTER_R   = 0.
 JITTER_G   = 0.
 JITTER_B   = 0.
+ALPHA = 0.7
 '''
 '''
 #colorist wash
@@ -67,6 +69,8 @@ JITTER_VAL = 0.  # range [0, 255]
 JITTER_R   = 0.3 * 16
 JITTER_G   = 0.3 * 16
 JITTER_B   = 0.3 * 16
+ALPHA = 0.5
+'''
 '''
 #pointilist
 APPROXIMATION_THRESHOLD = 100 #T
@@ -81,7 +85,8 @@ JITTER_VAL = 1  # range [0, 255]
 JITTER_R   = 0.
 JITTER_G   = 0.
 JITTER_B   = 0.
-
+ALPHA = 1.
+'''
 def painterly(img, radii=[2]):
     """
     Paint the original img with multiple paint brushes-style.
@@ -143,7 +148,14 @@ def paintSplineStrokesToCanvas(canvas, stroke, source):
     color = stroke['c']
     r = stroke['R']
     for p in points:
-        canvas = cv2.circle(canvas, (p[0], p[1]), r, color, -1, cv2.LINE_AA)
+        if ALPHA == 1:
+            canvas = cv2.circle(canvas, (p[0], p[1]), r, color, -1, cv2.LINE_AA)
+        else:
+            alpha_area = canvas[p[1] - r : p[1] + r, p[0] - r: p[0] + r]
+            alpha_area_c = cv2.circle(alpha_area.copy(), (r, r), r, color, -1, cv2.LINE_AA)
+            canvas[p[1] - r : p[1] + r, p[0] - r: p[0] + r] = alpha_area_c * ALPHA + alpha_area * (1 - ALPHA)
+            # canvas[p[1] - r : p[1] + r, p[0] - r: p[0] + r] = alpha_area_c * ALPHA + alpha_area * (1 - ALPHA)
+            # canvas[p[1] - r : p[1] + r, p[0] - r: p[0] + r] = cv2.addWeighted(alpha_area_c, ALPHA, alpha_area, (1 - ALPHA), 0)
     return canvas
 
 
